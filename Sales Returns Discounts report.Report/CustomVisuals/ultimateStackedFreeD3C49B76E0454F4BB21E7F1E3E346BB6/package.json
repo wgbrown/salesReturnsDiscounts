@@ -1,0 +1,29 @@
+{
+  "version": "4.2.0",
+  "author": {
+    "name": "dataviz.boutique",
+    "email": "info@dataviz.boutique"
+  },
+  "resources": [
+    {
+      "resourceId": "rId0",
+      "sourceType": 5,
+      "file": "resources/ultimateStackedFreeD3C49B76E0454F4BB21E7F1E3E346BB6.pbiviz.json"
+    }
+  ],
+  "visual": {
+    "guid": "ultimateStackedFreeD3C49B76E0454F4BB21E7F1E3E346BB6",
+    "name": "UltimateStackedFree4.2.0",
+    "displayName": "Ultimate Stacked Free 4.2.0",
+    "version": "4.2.0",
+    "description": "The Ultimate Waterfall Chart supports horizontal and vertical orientation, small multiples, sub totals and many more features. Custom colors for contribution, sub totals and totals. More Details http://dataviz.boutique/",
+    "supportUrl": "http://dataviz.boutique/",
+    "gitHubUrl": "",
+    "visualClassName": "ChordChart"
+  },
+  "metadata": {
+    "pbivizjson": {
+      "resourceId": "rId0"
+    }
+  }
+}

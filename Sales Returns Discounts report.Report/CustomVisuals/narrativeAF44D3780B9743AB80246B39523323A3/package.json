@@ -1,0 +1,29 @@
+{
+  "version": "1.2.1",
+  "author": {
+    "name": "Narrative Science",
+    "email": "narratives4powerbi@narrativescience.com"
+  },
+  "resources": [
+    {
+      "resourceId": "rId0",
+      "sourceType": 5,
+      "file": "resources/narrativeAF44D3780B9743AB80246B39523323A3.pbiviz.json"
+    }
+  ],
+  "visual": {
+    "guid": "narrativeAF44D3780B9743AB80246B39523323A3",
+    "name": "narrativesForPowerBI",
+    "displayName": "Narratives For Power BI",
+    "version": "1.2.1",
+    "description": "Add narratives to your Power BI reports instantly. Powered by Narrative Science.",
+    "supportUrl": "https://powerbi-support.narrativescience.com/hc/en-us",
+    "gitHubUrl": "",
+    "visualClassName": "Narrative"
+  },
+  "metadata": {
+    "pbivizjson": {
+      "resourceId": "rId0"
+    }
+  }
+}

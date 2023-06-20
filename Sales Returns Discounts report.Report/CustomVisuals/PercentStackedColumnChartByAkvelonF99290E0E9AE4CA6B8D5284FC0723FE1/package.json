@@ -1,0 +1,29 @@
+{
+  "version": "1.2.3",
+  "author": {
+    "name": "Akvelon Inc",
+    "email": "pbisupport@akvelon.com"
+  },
+  "resources": [
+    {
+      "resourceId": "rId0",
+      "sourceType": 5,
+      "file": "resources/PercentStackedColumnChartByAkvelonF99290E0E9AE4CA6B8D5284FC0723FE1.pbiviz.json"
+    }
+  ],
+  "visual": {
+    "guid": "PercentStackedColumnChartByAkvelonF99290E0E9AE4CA6B8D5284FC0723FE1",
+    "name": "100PercentStackedColumnChartByAkvelon",
+    "displayName": "100% Stacked Column Chart by Akvelon 1.2.3",
+    "version": "1.2.3",
+    "description": "100% Stacked Column Chart with rectangle selection support",
+    "supportUrl": "http://akvelon.com/feedback",
+    "gitHubUrl": "",
+    "visualClassName": "Visual"
+  },
+  "metadata": {
+    "pbivizjson": {
+      "resourceId": "rId0"
+    }
+  }
+}

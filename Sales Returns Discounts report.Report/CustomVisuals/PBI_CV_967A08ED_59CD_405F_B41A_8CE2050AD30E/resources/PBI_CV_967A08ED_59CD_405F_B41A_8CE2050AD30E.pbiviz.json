@@ -1,0 +1,374 @@
+{
+  "visual": {
+    "name": "PowerBI-visuals-clustering-dbscan",
+    "displayName": "Clustering with outliers",
+    "guid": "PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E",
+    "visualClassName": "Visual",
+    "version": "1.0.1",
+    "description": "<span>Clustering enables you to find similarity groups in your data, using the well-known <span style='font-style:italic'> density-based spatial clustering of applications with noise </span>(DBSCAN). Unlike many other clustering algorithms, DBSCAN also finds outliers. Settings for the visual let you control and refine algorithm parameters to meet your needs. <br/><br/><span style='font-style:italic'>Service prerequisites:</span> This R-powered custom visual is used without any modifications in the Power BI service <br/><br /><span style='font-style:italic'>Desktop prerequisites:</span> To run R scripts in Power BI Desktop, you must separately install R on your local computer. <br />You can download and install R for free from the <a href='https://mran.revolutionanalytics.com/download/'>Revolution Open download page</a> or the <a href='https://cran.r-project.org/bin/windows/base/'>CRAN Repository</a>. For more information, see <a href='https://powerbi.microsoft.com/en-us/documentation/powerbi-desktop-r-powered-custom-visuals/'>this article</a>. <br /><br /> <span style='font-style:italic'> R package dependencies(auto-installed): </span> scales, fpc, car, dbscan <br /><br /> <span style='font-style:italic'> Supports R versions: </span> R 3.3.2, R 3.3.1, R 3.3.0, MRO 3.3.2, MRO 3.3.1, MRO 3.3.0 <br /></span>",
+    "supportUrl": "http://community.powerbi.com/",
+    "gitHubUrl": "https://github.com/microsoft/PowerBI-visuals-dbscan"
+  },
+  "apiVersion": "1.3.0",
+  "author": {
+    "name": "Microsoft",
+    "email": "pbicvsupport@microsoft.com"
+  },
+  "assets": {
+    "icon": "assets/icon.png"
+  },
+  "externalJS": [],
+  "style": "style/visual.less",
+  "capabilities": {
+    "dataRoles": [
+      {
+        "displayName": "Values",
+        "description": "Add two or more numeric columns",
+        "kind": "Grouping",
+        "name": "Values"
+      },
+      {
+        "displayName": "Data point labels",
+        "description": "Short label(text or numeric) for each data point (optional)",
+        "kind": "GroupingOrMeasure",
+        "name": "PointLabels"
+      }
+    ],
+    "dataViewMappings": [
+      {
+        "conditions": [
+          {
+            "Values": {
+              "max": 1000
+            },
+            "PointLabels": {
+              "max": 1
+            }
+          }
+        ],
+        "scriptResult": {
+          "dataInput": {
+            "table": {
+              "rows": {
+                "select": [
+                  {
+                    "for": {
+                      "in": "Values"
+                    }
+                  },
+                  {
+                    "for": {
+                      "in": "PointLabels"
+                    }
+                  }
+                ],
+                "dataReductionAlgorithm": {
+                  "top": {}
+                }
+              }
+            }
+          },
+          "script": {
+            "scriptProviderDefault": "R",
+            "scriptOutputType": "png",
+            "source": {
+              "objectName": "rcv_script",
+              "propertyName": "source"
+            },
+            "provider": {
+              "objectName": "rcv_script",
+              "propertyName": "provider"
+            },
+            "scriptSourceDefault": "# Copyright (c) Microsoft Corporation.  All rights reserved.\r\n\r\n# Third Party Programs. This software enables you to obtain software applications from other sources. \r\n# Those applications are offered and distributed by third parties under their own license terms.\r\n# Microsoft is not developing, distributing or licensing those applications to you, but instead, \r\n# as a convenience, enables you to use this software to obtain those applications directly from \r\n# the application providers.\r\n# By using the software, you acknowledge and agree that you are obtaining the applications directly\r\n# from the third party providers and under separate license terms, and that it is your responsibility to locate, \r\n# understand and comply with those license terms.\r\n# Microsoft grants you no license rights for third-party software or applications that is obtained using this software.\r\n\r\n\r\n##PBI_R_VISUAL: VIZGAL_CLUSTERING_WITH_OUTLIERS  Graphical display of a clustering applied to point cloud \r\n# Computes and visualizes a clustering performed with DBSCAN clustering algorithm. \r\n# Allows user to control granularity of clusters or to find it automatically. \r\n# Provides several options for scaling the data and for visualization of clusters. \r\n# INPUT: \r\n# The input dataset should include at least two numerical non-constant columns  \r\n#\r\n#\r\n# WARNINGS:  Time consuming for large datasets\r\n#\r\n# CREATION DATE: 11/12/2016\r\n#\r\n# LAST UPDATE: 11/22/2016\r\n#\r\n# VERSION: 0.0.1\r\n#\r\n# R VERSION TESTED: 3.2.2\r\n# \r\n# AUTHOR: pbicvsupport@microsoft.com\r\n#\r\n# REFERENCES: https://cran.r-project.org/package=dbscan\r\n#             https://en.wikibooks.org/wiki/Data_Mining_Algorithms_In_R/Clustering/Density-Based_Clustering\r\n\r\n\r\n\r\n###############Library Declarations###############\r\n\r\nlibraryRequireInstall = function(packageName)\r\n{\r\n  if(!require(packageName, character.only = TRUE)) \r\n    warning( paste (\"*** Failed to install '\", packageName, \"'  ***\", sep = \"\"))\r\n}\r\n\r\n\r\nlibraryRequireInstall(\"scales\")\r\nlibraryRequireInstall(\"fpc\")\r\nlibraryRequireInstall(\"car\")\r\nlibraryRequireInstall(\"dbscan\")\r\n\r\n###############Internal parameters definitions#################\r\n##PBI_PARAM: the random number generator (RNG) state for random number generation \r\n#Type: numeric, Default:42, Range:NA, PossibleValues:NA, Remarks: NA\r\nrandSeed = 42\r\n\r\n##PBI_PARAM: transparency of points on plot, 0 is invisible, 1 is opaque\r\n#Type: numeric, Default:0.25, Range:[0, 1], PossibleValues:NA, Remarks: NA\r\n#pointOpacity = 0.5\r\n\r\n##PBI_PARAM: minimum required samples (rows in data table)\r\n#Type: positive integer, Default:10, Range:[5, 100], PossibleValues:NA, Remarks: NA\r\nminSamplesToRun = 12 \r\n\r\n##PBI_PARAM: maximum samples to use inside autoNumClusters function\r\n#Type: positive integer, Default:1200, Range:[100, 10000], PossibleValues:NA, Remarks: NA\r\nmaxSamples4autoGranularity = 1200\r\n\r\n##PBI_PARAM: insignificant principle component threshold\r\n# If PCA is applied all dimensions, that explain less than insigPC percentage of variance are removed\r\n#Type: positive numeric, Default:0.05, Range:[0, 1], PossibleValues:NA, Remarks: NA\r\ninsigPC = 0.05\r\n\r\n\r\n##PBI_PARAM: type for outlier marker\r\n#Type: integer, Default:4, Range:[1:20], PossibleValues:NA, Remarks: NA\r\noutLierPch = 4  \r\n\r\n\r\n##PBI_PARAM:  size for legend text\r\n#Type: float, Default:1, Range:[0:5], PossibleValues:NA, Remarks: NA\r\nlegendTextSize = 1\r\n\r\n##PBI_PARAM:  size for warning text\r\n#Type: float, Default:0.8, Range:[0:2], PossibleValues:NA, Remarks: NA\r\nwarningCex = 0.8\r\n\r\n###############Internal functions definitions#################\r\n\r\n# if not enough space --> do not show the legend\r\nvalidateIfToShowLegend = function(numClust, textSize)\r\n{\r\n  ppp = par()$din\r\n  horFlag = (2.5*textSize < ppp[1])\r\n  verFlag = (0.35*numClust*textSize < ppp[2])\r\n  return(horFlag && verFlag) \r\n}\r\n\r\n# if not enough space replace \"long text\" by \"long te...\"\r\ncutStr2Show = function(strText, strCex = 0.8, abbrTo = 100, isH = TRUE, maxChar = 0, partAvailable = 1)\r\n{\r\n  # strText = text to modify \r\n  # strCex = font size \r\n  # abbrTo = very long string will be abbreviated to \"abbrTo\" characters\r\n  # isH = \"is horizontal\" ?\r\n  # maxChar = text smaller than maxChar is replaced by NULL\r\n  # partAvailable = which portion of window is available for text, in [0,1]\r\n  \r\n  if(is.null(strText))\r\n    return (NULL)\r\n  \r\n  SCL = 0.094*strCex\r\n  pardin = par()$din\r\n  gStand = partAvailable*(isH*pardin[1]+(1-isH)*pardin[2]) /SCL\r\n  \r\n  # if very very long abbreviate\r\n  if(nchar(strText)>abbrTo && nchar(strText)> 1)\r\n    strText = abbreviate(strText, abbrTo)\r\n  \r\n  # if looooooong convert to lo...\r\n  if(nchar(strText)>round(gStand) && nchar(strText)> 1)\r\n    strText = paste(substring(strText,1,floor(gStand)),\"...\",sep=\"\")\r\n  \r\n  # if shorter than maxChar remove \r\n  if(gStand<=maxChar)\r\n    strText = NULL\r\n  \r\n  return(strText) \r\n}\r\n\r\n\r\n\r\n\r\n#function finds average distance of np1'th to np2'th neighbour, for example:\r\n# if np1=np2=1, will find distance to the nearest neighbour\r\n# in np1=np2=3, will find distance to the third nearest neighbour\r\n# in np1=1, np2=3, will find average distance to the three nearest neighbours \r\navgNearestDist <- function(data, np1 = 1, np2 = np1 )\r\n{\r\n  nn <- dbscan::kNN(data, k = np2)\r\n  distances  =  nn$dist[, c(np1:np2)]\r\n  if( np1<np2 )\r\n  {\r\n    res <- sort(apply (distances, 1, mean) )\r\n  }else{\r\n    res = sort(distances)\r\n  }\r\n  return(res)\r\n}\r\n\r\n#sum of square errors for linear fit \r\nSSE = function(x, y) {sum( abs( lm( formula = y ~ x, data = data.frame(x = x, y = y) )$residuals )^2)}\r\n\r\n# find knee point which corresponds to best cut-point of two linear fits\r\nfindKnee <- function( inX, inY )\r\n{\r\n  orderX = order( inX )\r\n  inX = inX[orderX];inY = inY[orderX]\r\n  \r\n  L = length(inX)\r\n  resV = rep(Inf, L)\r\n  first = 3\r\n  last = L-3\r\n  \r\n  for (i in (first+2):(last-2))\r\n  {\r\n    x = inX[first:(i-1)]\r\n    y = inY[first:(i-1)]\r\n    resid = SSE(x, y)\r\n    x = inX[(i+1):last]\r\n    y = inY[(i+1):last]\r\n    resV[i]=resid+SSE(x, y)\r\n  }\r\n  \r\n  mi = which.min(resV)-1\r\n  return( c(inX[mi], inY[mi]) )\r\n}\r\n\r\n\r\n#verify if the column is numeric and non-constant\r\ncorrectColumn <- function(someColumn){ is.numeric(someColumn)&&length(unique(someColumn)) > 1 }\r\n\r\n#euclidean distance between two points\r\neuc.dist <- function(x1, x2) sqrt(sum((x1 - x2) ^ 2))\r\n\r\n#plot convex hull\r\nplotCH = function(xcoord, ycoord, lcolor){\r\n  hpts <- chull(x = xcoord, y = ycoord)\r\n  hpts <- c(hpts, hpts[1])\r\n  lines( xcoord[hpts], ycoord[hpts], col = lcolor, lty = 3 )\r\n}  \r\n\r\n# get datapoints closest to centers \r\ngetDelegates <- function(orig_data, clean_data, cluster_centers)\r\n{\r\n  nc  <-  nrow(cluster_centers)\r\n  dc <- ncol(cluster_centers)  \r\n  nr <- nrow(clean_data)\r\n  delegates <- NULL\r\n  for(clus in seq(1, length.out = nc))\r\n  {\r\n    B  <-  matrix(rep(cluster_centers[clus, ], times = nr), nrow = nr, ncol = dc, byrow = TRUE)\r\n    D  <-  clean_data[, c(1:dc)]-B\r\n    ed <- apply(D^2, 1, sum)\r\n    delegates <- rbind(delegates, orig_data[which.min(ed), ])\r\n  }\r\n  return(delegates) \r\n}\r\n\r\n# heuristic method for minPts parameter in dbscan \r\n# larger number of points for high dimensionality \r\nautoParamMinPtsFunc <- function(mydata, defaultMinPts = 5, extraPointPerRowCount = 250)\r\n{\r\n  nc <- ncol( mydata )\r\n  nr <- nrow( mydata )\r\n  \r\n  minPts <- max(defaultMinPts, (2*nc-1)) + floor( nr/extraPointPerRowCount )\r\n  return(minPts)\r\n}\r\n\r\n\r\n#autoGranularity\r\nautoEpsFunc <- function(mydata, maxPoints, reachMinPts, alpha = 0.6)\r\n{\r\n  if(nrow(mydata) > maxPoints)\r\n    mydata <- mydata[sample(nrow(mydata), maxPoints), ]\r\n  \r\n  avgNNmp <- avgNearestDist(mydata, 1, reachMinPts) # to reachMinPts nearest \r\n  avgNN1 <- avgNearestDist(mydata, 1, 1) # to  nearest \r\n  avgNN =  alpha*avgNN1+(1-alpha)*avgNNmp\r\n  eps = findKnee(1:length(avgNNmp), avgNNmp)[2]\r\n  #eps = findKnee(1:length(avgNN1), avgNN1)[2]\r\n  return(eps)\r\n}\r\n\r\n#granularity2eps\r\ngranularity2epsMinMax <- function(mydata, g, maxPoints, reachMinPts)\r\n{\r\n  #subsample if needed\r\n  if(ncol(mydata) > maxPoints)\r\n    mydata <- mydata[sample(ncol(mydata), maxPoints), ]\r\n  \r\n  avgNN <- avgNearestDist(mydata, reachMinPts, reachMinPts)\r\n  \r\n  resEps = as.numeric(quantile(avgNN, g))\r\n  return(resEps)\r\n  \r\n}\r\n\r\n#compute eps for dbscan (not in use)\r\ngetEps <- function(mydata, frac = 0.04){euc.dist(sapply(mydata, max), sapply(mydata, min))*frac}\r\n\r\n#get centers from clusters\r\ncentersFromClusters <- function(mydata, clusters)\r\n{\r\n  NC <- max(clusters)\r\n  centers <- NULL\r\n  for (c in seq(1, length.out = NC))\r\n  {\r\n    centers = rbind(centers, apply(mydata[clusters == c, ], 2, mean))\r\n  }\r\n  return(centers)\r\n}\r\n\r\nmyPallete = function(n=100,palleteType = \"rainbow\")\r\n{\r\n  mp = rainbow(n)\r\n  \r\n  if(palleteType == \"heat\")\r\n    mp = heat.colors(n)\r\n  \r\n  if(palleteType == \"terrain\")\r\n    mp = terrain.colors(n)\r\n  \r\n  if(palleteType == \"topo\")\r\n    mp = topo.colors(n)\r\n  \r\n  if(palleteType == \"cm\")\r\n    mp = cm.colors(n+1)[-1] #remove white\r\n  \r\n  if(palleteType == \"gray\")\r\n    mp = gray(0:n/ n)\r\n  \r\n  return(mp)\r\n  \r\n}\r\n\r\n# variables to come from group:show\r\naddLabel2clusterDelegate = TRUE\r\naddLabel2points = TRUE \r\naddLegend = TRUE\r\n\r\n\r\n#################################################################################\r\n###   The fuction to produce visual\r\n#################################################################################\r\n\r\n#********* PBI Parameters Block ***************\r\nif(!exists(\"Values\"))\r\n  Values = NULL \r\n\r\nif(!exists(\"PointLabels\"))\r\n  PointLabels = NULL \r\n\r\naddLabel2points = TRUE  #default\r\nif (exists(\"settings_labeling_params_show\")) \r\n{\r\n  addLabel2points = settings_labeling_params_show\r\n}\r\n\r\naddLabel2clusterDelegate = FALSE  #default\r\nif (exists(\"settings_representative_params_show\")) \r\n{\r\n  addLabel2clusterDelegate = settings_representative_params_show\r\n}\r\n\r\naddLegend = TRUE  #default\r\nif (exists(\"settings_legend_params_show\")) \r\n{\r\n  addLegend = settings_legend_params_show\r\n}\r\n\r\nif(exists(\"settings_prepocessing_params_show\") && settings_prepocessing_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_prepocessing_params_\" ))\r\n\r\nif(exists(\"settings_clusterNum_params_show\") && settings_clusterNum_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_clusterNum_params_\" ))\r\n\r\nif(exists(\"settings_viz_params_show\") && settings_viz_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_viz_params_\" ))\r\n\r\nif(exists(\"settings_labeling_params_show\") && settings_labeling_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_labeling_params_\" ))\r\n\r\nif(exists(\"settings_representative_params_show\") && settings_representative_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_representative_params_\" ))\r\n\r\nif(exists(\"settings_legend_params_show\") && settings_legend_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_legend_params_\" ))\r\n\r\nif(exists(\"settings_additional_params_show\") && settings_additional_params_show == FALSE)\r\n  rm(list= ls(pattern = \"settings_additional_params_\" ))\r\n\r\n##PBI_PARAM: display_name: Scale data, tooltip:Used to standardize the range of features of data\r\n# Type: bool, default:FALSE, \r\n# Min: , Max:\r\nscaleData = FALSE  #default\r\nif (exists(\"settings_prepocessing_params_scaleData\")) \r\n{\r\n  scaleData = settings_prepocessing_params_scaleData\r\n}\r\n\r\n##PBI_PARAM: display_name: Apply PCA, tooltip:Recommended for data with more than two dimensions\r\n# Type: bool, default:FALSE, \r\n# Min: , Max:\r\napplyPCA = FALSE  #default\r\nif (exists(\"settings_prepocessing_params_applyPCA\")) \r\n{\r\n  applyPCA = settings_prepocessing_params_applyPCA\r\n}\r\n\r\n##PBI_PARAM: display_name: Granularity method, tooltip:Select preferable method to set granularity parameter(eps)\r\n# Type: enumeration, default:'scale', \r\n# Min: , Max:\r\n# enumeration options: auto ,scale ,manual ,\r\ngranularityParameterType = 'auto'  #default\r\nif (exists(\"settings_clusterNum_params_granularityParameterType\")) \r\n{\r\n  granularityParameterType = settings_clusterNum_params_granularityParameterType\r\n}\r\n\r\n##PBI_PARAM: display_name: Granularity, tooltip:User-defined granularity level, used only if  autoGranularity = FALSE. Smaller values correspond to more clusters\r\n# Type: numeric, default:50, \r\n# Min: 1, Max:100\r\ngranularityLevel = 50  #default\r\nif (exists(\"settings_clusterNum_params_percentile\")) \r\n{\r\n  granularityLevel = settings_clusterNum_params_percentile\r\n  granularityLevel = max( min (granularityLevel, 100), 1)\r\n}\r\n\r\n##PBI_PARAM: display_name: Reachability distance, tooltip:How close points should be to each other to be considered a part of a cluster (eps)\r\n# Type: numeric, default:0, \r\n# Min: 0, Max:1e+08\r\neps = 0  #default\r\nif (exists(\"settings_clusterNum_params_eps\")) \r\n{\r\n  eps = settings_clusterNum_params_eps\r\n  eps = max( min (eps, 1e+08), 0)\r\n}\r\n\r\n##PBI_PARAM: display_name: Find minimum points automatically, tooltip:\r\n# Type: bool, default:TRUE, \r\n# Min: , Max:\r\nautoParamMinPts = TRUE  #default\r\nif (exists(\"settings_clusterNum_params_autoParamMinPts\")) \r\n{\r\n  autoParamMinPts = settings_clusterNum_params_autoParamMinPts\r\n}\r\n\r\n##PBI_PARAM: display_name: Minimum points per cluster, tooltip:User-defined minimum points parameter. Smaller values correspond to more clusters\r\n# Type: numeric, default:5, \r\n# Min: 1, Max:1000\r\nminPtsParam = 5  #default\r\nif (exists(\"settings_clusterNum_params_minPtsParam\")) \r\n{\r\n  minPtsParam = settings_clusterNum_params_minPtsParam\r\n  minPtsParam = max( min (minPtsParam, 1000), 1)\r\n}\r\n\r\n##PBI_PARAM: display_name: Draw ellipse, tooltip:\r\n# Type: bool, default:FALSE, \r\n# Min: , Max:\r\ndrawEllipse = FALSE  #default\r\nif (exists(\"settings_viz_params_drawEllipse\")) \r\n{\r\n  drawEllipse = settings_viz_params_drawEllipse\r\n}\r\n\r\n##PBI_PARAM: display_name: Draw convex hull, tooltip:\r\n# Type: bool, default:FALSE, \r\n# Min: , Max:\r\ndrawConvexHull = FALSE  #default\r\nif (exists(\"settings_viz_params_drawConvexHull\")) \r\n{\r\n  drawConvexHull = settings_viz_params_drawConvexHull\r\n}\r\n\r\n##PBI_PARAM: display_name: Draw centroid, tooltip:\r\n# Type: bool, default:FALSE, \r\n# Min: , Max:\r\ndrawCenters = FALSE  #default\r\nif (exists(\"settings_viz_params_drawCenters\")) \r\n{\r\n  drawCenters = settings_viz_params_drawCenters\r\n}\r\n\r\n##PBI_PARAM: display_name: Point opacity, tooltip:\r\n# Type: numeric, default:30, \r\n# Min: 0, Max:100\r\npointOpacity = 30  #default\r\nif (exists(\"settings_viz_params_percentile\")) \r\n{\r\n  pointOpacity = settings_viz_params_percentile\r\n  pointOpacity = max( min (pointOpacity, 100), 0)\r\n}\r\n\r\n##PBI_PARAM: display_name: Point size, tooltip:\r\n# Type: numeric, default:10, \r\n# Min: 1, Max:50\r\npointSize = 10  #default\r\nif (exists(\"settings_viz_params_weight\")) \r\n{\r\n  pointSize = settings_viz_params_weight\r\n  pointSize = max( min (pointSize, 50), 1)\r\n}\r\n\r\n##PBI_PARAM: display_name: Font size, tooltip:\r\n# Type: numeric, default:8, \r\n# Min: 8, Max:40\r\nlabelingFontSize = 8  #default\r\nif (exists(\"settings_labeling_params_textSize\")) \r\n{\r\n  labelingFontSize = settings_labeling_params_textSize\r\n  labelingFontSize = max( min (labelingFontSize, 40), 8)\r\n}\r\n\r\n##PBI_PARAM: display_name: Label opacity, tooltip:\r\n# Type: numeric, default:100, \r\n# Min: 0, Max:100\r\nlabelOpacity = 100  #default\r\nif (exists(\"settings_labeling_params_percentile\")) \r\n{\r\n  labelOpacity = settings_labeling_params_percentile\r\n  labelOpacity = max( min (labelOpacity, 100), 0)\r\n}\r\n\r\n##PBI_PARAM: display_name: Limit label length, tooltip:Abbreviate labels to a limited length\r\n# Type: numeric, default:5, \r\n# Min: 1, Max:100\r\nmaxLenPointLabel = 5  #default\r\nif (exists(\"settings_labeling_params_maxLenPointLabel\")) \r\n{\r\n  maxLenPointLabel = settings_labeling_params_maxLenPointLabel\r\n  maxLenPointLabel = max( min (maxLenPointLabel, 100), 1)\r\n}\r\n\r\n##PBI_PARAM: display_name: Percentage of points labeled, tooltip:Avoids cluttering text\r\n# Type: numeric, default:100, \r\n# Min: 0, Max:100\r\npercPointsLabeled = 100  #default\r\nif (exists(\"settings_labeling_params_percentile1\")) \r\n{\r\n  percPointsLabeled = settings_labeling_params_percentile1\r\n  percPointsLabeled = max( min (percPointsLabeled, 100), 0)\r\n}\r\n\r\n##PBI_PARAM: display_name: Font size, tooltip:\r\n# Type: numeric, default:8, \r\n# Min: 1, Max:40\r\nrepresentativeFontSize = 8  #default\r\nif (exists(\"settings_representative_params_textSize\")) \r\n{\r\n  representativeFontSize = settings_representative_params_textSize\r\n  representativeFontSize = max( min (representativeFontSize, 40), 1)\r\n}\r\n\r\n##PBI_PARAM: display_name: Limit label length, tooltip:Abbreviate labels to a limited length\r\n# Type: numeric, default:30, \r\n# Min: 1, Max:100\r\nmaxLenDelegate = 30  #default\r\nif (exists(\"settings_representative_params_maxLenDelegate\")) \r\n{\r\n  maxLenDelegate = settings_representative_params_maxLenDelegate\r\n  maxLenDelegate = max( min (maxLenDelegate, 100), 1)\r\n}\r\n\r\n##PBI_PARAM: display_name: Pallete type, tooltip:Color pallete type\r\n# Type: enumeration, default:'rainbow', \r\n# Min: , Max:\r\n# enumeration options: rainbow ,gray ,cm ,topo ,terrain ,heat ,\r\npalleteType = 'rainbow'  #default\r\nif (exists(\"settings_legend_params_palleteType\")) \r\n{\r\n  palleteType = settings_legend_params_palleteType\r\n}\r\n\r\n##PBI_PARAM: display_name: Color of outliers, tooltip:\r\n# Type: fill, default:'black', \r\n# Min: , Max:\r\noutLierCol = 'black'  #default\r\nif (exists(\"settings_legend_params_outLierCol\")) \r\n{\r\n  outLierCol = settings_legend_params_outLierCol\r\n}\r\n\r\n##PBI_PARAM: display_name: Show warnings, tooltip:\r\n# Type: bool, default:TRUE, \r\n# Min: , Max:\r\nshowWarnings = TRUE  #default\r\nif (exists(\"settings_additional_params_showWarnings\")) \r\n{\r\n  showWarnings = settings_additional_params_showWarnings\r\n}\r\n\r\n\r\n\r\n{\r\n  \r\n  \r\n  \r\n  if(eps ==0) #not valid \"eps\" => \"auto\" mode\r\n    eps = NULL\r\n  \r\n  #addLegend = TRUE\r\n  delegateCex = representativeFontSize/10\r\n  \r\n  skipLabel2points = max(100/as.numeric(percPointsLabeled) , 1)\r\n  labelOpacity = labelOpacity/100\r\n  pointOpacity = pointOpacity/100\r\n  cexLabel2points = labelingFontSize/10\r\n  pointMarkerSize = pointSize/10  \r\n  drawPoints = TRUE\r\n  \r\n  \r\n  if(!is.null(Values))\r\n    dataset = Values\r\n  \r\n  if(!is.null(PointLabels))\r\n    PointLabels[,1] = as.character(PointLabels[,1])\r\n  \r\n  if(!is.null(PointLabels) && !is.null(Values))\r\n    dataset = cbind(PointLabels, dataset)\r\n  \r\n  if(!is.null(PointLabels) && is.null(Values))\r\n    dataset = PointLabels\r\n  \r\n  \r\n  if(addLabel2points && is.null(PointLabels))\r\n    addLabel2points = FALSE\r\n  \r\n  ###############Upfront input correctness validations (where possible)#################\r\n  minPtsParam = round(minPtsParam)\r\n  pbiWarning <- NULL\r\n  \r\n  dataset  <-  na.omit(dataset) # deletion of missing\r\n  orig_dataset <- dataset #used later for delegates\r\n  \r\n  # verify correctness of dataset\r\n  useColumns <- sapply(dataset, correctColumn)\r\n  \r\n  if(showWarnings && sum(useColumns[-1])<ncol(dataset)-1)\r\n    pbiWarning <- \"At least one of the columns was not numeric, or constant\"\r\n  \r\n  #exclude defect columns\r\n  dataset  <-  as.data.frame(dataset[, useColumns])\r\n  nc <- ncol(dataset)\r\n  nr <- nrow(dataset)\r\n  \r\n  checkDimiensionality <- TRUE\r\n  if(nc < 2 || nr < minSamplesToRun || is.null(Values))\r\n  {\r\n    checkDimiensionality <- FALSE\r\n    if(showWarnings)\r\n      pbiWarning <- paste(pbiWarning, \"\\nNot enough input dimensions\");\r\n  }\r\n  \r\n  if(!autoParamMinPts && minPtsParam >= nr)\r\n  {\r\n    checkDimiensionality <- FALSE\r\n    if(showWarnings)\r\n      pbiWarning <- paste(pbiWarning, \"\\nParameter minPts is out of limits\");\r\n  }\r\n  \r\n  ##############Main Visualization script###########\r\n  \r\n  maxGLevel = 100  # for \"scale\" mode maxGLevel can be used to squeeze the range \r\n  set.seed(randSeed)\r\n  \r\n  if(!checkDimiensionality)\r\n  {\r\n    plot.new()\r\n  }else\r\n  {\r\n    if(scaleData)\r\n    {\r\n      dataset <- as.data.frame(scale(dataset))\r\n      names(dataset) = paste(names(dataset), \"scaled\", sep = \".\")\r\n    }\r\n    if(applyPCA)\r\n    {\r\n      dataset.pca  <-  prcomp(dataset, center =  TRUE, scale =  F) \r\n      pExplained <- dataset.pca$sdev^2/sum(dataset.pca$sdev^2)\r\n      flags <- (pExplained > insigPC); flags[1:2] = TRUE #at least 2 dimensions\r\n      dataset = as.data.frame(dataset.pca$x[, flags])#reduce dimensions with less than 5% variance\r\n    }\r\n    \r\n    if(autoParamMinPts)\r\n      minPtsParam = autoParamMinPtsFunc(dataset, extraPointPerRowCount = 175)\r\n    \r\n    \r\n    #find eps\r\n    if(granularityParameterType == \"auto\")\r\n      eps = autoEpsFunc(dataset, maxSamples4autoGranularity, minPtsParam)  \r\n    \r\n    \r\n    if(granularityParameterType == \"scale\")\r\n      eps <- granularity2epsMinMax(dataset, granularityLevel/maxGLevel, maxSamples4autoGranularity, minPtsParam)\r\n    \r\n    if(is.null(eps)) \r\n      eps = autoEpsFunc(dataset, maxSamples4autoGranularity, minPtsParam)  \r\n    \r\n    \r\n    #DBSCAN call \r\n    cl <- dbscan::dbscan(dataset, eps, minPts = minPtsParam)\r\n    \r\n    numOfClusters = max(cl$cluster)\r\n    \r\n    \r\n    cl$centers <- centersFromClusters(dataset, cl$cluster) \r\n    \r\n    drawColors <- c(outLierCol, myPallete(numOfClusters,palleteType = palleteType))\r\n    drawColorsLeg <- c(rainbow(numOfClusters), outLierCol)\r\n    drawPch <- c(outLierPch, rep(19, numOfClusters))\r\n    \r\n    \r\n    \r\n    #visualize 2 first coordinates \r\n    if(drawPoints)  colpoints = drawColors[cl$cluster+1] else colpoints = NULL \r\n    \r\n    pchPoints = drawPch[cl$cluster+1]\r\n    \r\n    #in case of legend extend xlim to the right by 20%\r\n    xrange = range(dataset[, 1])\r\n    drange = xrange[2]-xrange[1]\r\n    xlim = c(xrange[1]-0.01*drange, xrange[2]+0.01*drange+drange*0.20*addLegend)\r\n    \r\n    plot(dataset[, 1], dataset[, 2], col = alpha(colpoints, pointOpacity), pch = pchPoints, \r\n         xlab = cutStr2Show(names(dataset)[1], strCex =1.1, isH = TRUE), \r\n         ylab = cutStr2Show(names(dataset)[2], strCex =1.1, isH = FALSE), \r\n         xlim = xlim, cex = pointMarkerSize)\r\n    \r\n    leg <- NULL\r\n    if(!is.null(cl$centers))\r\n      leg <- paste(\"Cluster \", seq(1, length.out  = numOfClusters)) #text\r\n    \r\n    pc <- c(rep(19, numOfClusters)) # markers \r\n    colMarkers <- drawColors[-1]\r\n    \r\n    if(drawCenters && !is.null(cl$centers))\r\n    {\r\n      points(cl$centers, pch = 7, col = drawColors[-1])\r\n      leg <- cbind(leg, paste(\"Cluster center \" , seq(1, length.out  = numOfClusters)))\r\n      pc <- cbind(pc, rep(7, numOfClusters))\r\n      colMarkers <- rep(colMarkers, 2)\r\n    }\r\n    \r\n    leg <- c(leg, \"Outlers\")\r\n    pc = c(pc, outLierPch)\r\n    colMarkers <- c(colMarkers, outLierCol)\r\n    \r\n    if(drawEllipse)\r\n    {\r\n      for(clus in seq(1, length.out = numOfClusters))\r\n      {\r\n        iii <- (cl$cluster == clus)\r\n        if(sum(iii) > 2)\r\n          dataEllipse(dataset[iii, 1], dataset[iii, 2], add = T, plot.points = F, levels = 0.85, col = drawColorsLeg[clus], lwd = 1, \r\n                      fill = TRUE, fill.alpha = 0.075, center.pch = NULL)\r\n      }\r\n    }\r\n    \r\n    if(drawConvexHull)\r\n    {\r\n      for(clus in seq(1, length.out = numOfClusters))\r\n      {\r\n        iii <- (cl$cluster == clus)\r\n        if(sum(iii) > 2)\r\n          plotCH(dataset[iii, 1], dataset[iii, 2], lcolor = drawColorsLeg[clus])\r\n      }\r\n    }\r\n    \r\n    if(addLabel2clusterDelegate)\r\n    {\r\n      clean_data = dataset\r\n      cluster_centers = (cl$centers)\r\n      if(!is.null(cluster_centers))\r\n      {\r\n        deleg <- getDelegates(orig_dataset, dataset, cl$centers)\r\n        \r\n        delegateText = abbreviate(apply(deleg, 1, toString),maxLenDelegate)\r\n        delegateText = sapply(delegateText, cutStr2Show, strCex = delegateCex, partAvailable = 0.75)\r\n        \r\n        \r\n        text(x = cl$centers[, 1], y = cl$centers[, 2], \r\n             delegateText, \r\n             col = \"black\", \r\n             cex = delegateCex)\r\n      }\r\n    }\r\n    \r\n    if(addLabel2points)\r\n    {\r\n      iii=sample(1:nrow(dataset),max(1,floor(nrow(dataset)/skipLabel2points)))\r\n      text(x = dataset[iii, 1], y = dataset[iii, 2], labels = abbreviate(orig_dataset[iii,1],maxLenPointLabel),\r\n           col = alpha(colpoints[iii], labelOpacity), cex = cexLabel2points)\r\n    }\r\n    \r\n    if(addLegend && validateIfToShowLegend(numClust = numOfClusters, textSize = legendTextSize ))\r\n      legend(\"topright\", legend = leg, pch = pc, col = alpha(colMarkers, 1), cex = legendTextSize)\r\n    \r\n  }\r\n  if(showWarnings && !is.null(pbiWarning))\r\n  {\r\n    pbiWarning = cutStr2Show(pbiWarning, strCex = warningCex)\r\n    title(main = NULL, sub = pbiWarning, outer = FALSE, col.sub = \"gray50\", cex.sub = warningCex)\r\n  }\r\n  \r\n}\r\n"
+          }
+        }
+      }
+    ],
+    "objects": {
+      "settings_prepocessing_params": {
+        "displayName": "Data preprocessing",
+        "properties": {
+          "show": {
+            "type": {
+              "bool": true
+            }
+          },
+          "scaleData": {
+            "displayName": "Scale data",
+            "description": "Used to standardize the range of features of data",
+            "type": {
+              "bool": true
+            }
+          },
+          "applyPCA": {
+            "displayName": "Apply PCA",
+            "description": "Recommended for data with more than two dimensions",
+            "type": {
+              "bool": true
+            }
+          }
+        }
+      },
+      "settings_clusterNum_params": {
+        "displayName": "Clusters definition",
+        "description": "Refine the density and size of clusters",
+        "properties": {
+          "granularityParameterType": {
+            "displayName": "Granularity method",
+            "description": "Select the method used to set the granularity parameter (eps)",
+            "type": {
+              "enumeration": [
+                {
+                  "displayName": "auto",
+                  "value": "auto"
+                },
+                {
+                  "displayName": "scale",
+                  "value": "scale"
+                },
+                {
+                  "displayName": "manual",
+                  "value": "manual"
+                }
+              ]
+            }
+          },
+          "percentile": {
+            "displayName": "Granularity",
+            "description": "User-defined granularity. Smaller values result in more clusters.",
+            "type": {
+              "numeric": true
+            }
+          },
+          "eps": {
+            "displayName": "eps: reachability distance",
+            "description": "Proximity to determine whether points are considered part of a cluster. Smaller values result in more clusters and more outliers.",
+            "type": {
+              "numeric": true
+            }
+          },
+          "autoParamMinPts": {
+            "displayName": "Find minimum points automatically",
+            "type": {
+              "bool": true
+            }
+          },
+          "minPtsParam": {
+            "displayName": "Minimum points per seed",
+            "description": "Reachability minimum number of points. Smaller values result in more clusters.",
+            "type": {
+              "numeric": true
+            }
+          }
+        }
+      },
+      "settings_viz_params": {
+        "displayName": "Visual appearance",
+        "properties": {
+          "show": {
+            "type": {
+              "bool": true
+            }
+          },
+          "drawEllipse": {
+            "displayName": "Draw ellipse",
+            "type": {
+              "bool": true
+            }
+          },
+          "drawConvexHull": {
+            "displayName": "Draw convex hull",
+            "type": {
+              "bool": true
+            }
+          },
+          "drawCenters": {
+            "displayName": "Draw centroid",
+            "type": {
+              "bool": true
+            }
+          },
+          "percentile": {
+            "displayName": "Point opacity",
+            "type": {
+              "numeric": true
+            }
+          },
+          "weight": {
+            "displayName": "Point size",
+            "type": {
+              "numeric": true
+            }
+          }
+        }
+      },
+      "settings_labeling_params": {
+        "displayName": "Points labeling",
+        "properties": {
+          "show": {
+            "type": {
+              "bool": true
+            }
+          },
+          "textSize": {
+            "displayName": "Font size",
+            "type": {
+              "numeric": true
+            }
+          },
+          "percentile": {
+            "displayName": "Label opacity",
+            "type": {
+              "numeric": true
+            }
+          },
+          "maxLenPointLabel": {
+            "displayName": "Limit label length",
+            "description": "Abbreviate labels to a limited length",
+            "type": {
+              "numeric": true
+            }
+          },
+          "percentile1": {
+            "displayName": "Percentage of points labeled",
+            "description": "Avoids cluttering text",
+            "type": {
+              "numeric": true
+            }
+          }
+        }
+      },
+      "settings_representative_params": {
+        "displayName": "Cluster representative labeling",
+        "description": "Add a label to the typical representative of each cluster",
+        "properties": {
+          "show": {
+            "type": {
+              "bool": true
+            }
+          },
+          "textSize": {
+            "displayName": "Font size",
+            "type": {
+              "numeric": true
+            }
+          },
+          "maxLenDelegate": {
+            "displayName": "Limit label length",
+            "description": "Abbreviate labels to a limited length",
+            "type": {
+              "numeric": true
+            }
+          }
+        }
+      },
+      "settings_legend_params": {
+        "displayName": "Legend",
+        "description": "Parameters for the clustering plot legend",
+        "properties": {
+          "show": {
+            "type": {
+              "bool": true
+            }
+          },
+          "palleteType": {
+            "displayName": "Pallete type",
+            "description": "Color pallete type",
+            "type": {
+              "enumeration": [
+                {
+                  "displayName": "rainbow",
+                  "value": "rainbow"
+                },
+                {
+                  "displayName": "cm",
+                  "value": "cm"
+                },
+                {
+                  "displayName": "topo",
+                  "value": "topo"
+                },
+                {
+                  "displayName": "terrain",
+                  "value": "terrain"
+                },
+                {
+                  "displayName": "heat",
+                  "value": "heat"
+                }
+              ]
+            }
+          },
+          "outLierCol": {
+            "displayName": "Color of outliers",
+            "type": {
+              "fill": {
+                "solid": {
+                  "color": true
+                }
+              }
+            }
+          }
+        }
+      },
+      "settings_additional_params": {
+        "displayName": "Additional parameters",
+        "description": "Additional and experimental parameters",
+        "properties": {
+          "showWarnings": {
+            "displayName": "Show warnings",
+            "type": {
+              "bool": true
+            }
+          }
+        }
+      },
+      "rcv_script": {
+        "properties": {
+          "provider": {
+            "type": {
+              "text": true
+            }
+          },
+          "source": {
+            "type": {
+              "scripting": {
+                "source": true
+              }
+            }
+          }
+        }
+      }
+    },
+    "suppressDefaultTitle": true
+  },
+  "dependencies": {
+    "cranPackages": [
+      {
+        "name": "scales",
+        "displayName": "scales: Scale Functions for Visualization",
+        "url": "https://cran.r-project.org/web/packages/scales/index.html"
+      },
+      {
+        "name": "fpc",
+        "displayName": "fpc: Flexible Procedures for Clustering",
+        "url": "https://cran.r-project.org/web/packages/fpc/index.html"
+      },
+      {
+        "name": "car",
+        "displayName": "car: Companion to Applied Regression",
+        "url": "https://cran.r-project.org/web/packages/car/index.html"
+      },
+      {
+        "name": "dbscan",
+        "displayName": "dbscan: Density Based Clustering of Applications with Noise (DBSCAN) and Related Algorithms",
+        "url": "https://cran.r-project.org/web/packages/dbscan/index.html"
+      }
+    ]
+  },
+  "content": {
+    "js": "var powerbi;!function(e){var t;!function(e){var t;!function(e){var t;!function(e){function t(e,t,a,s){if(e){var i=e[t];if(i){var r=i[a];if(void 0!==r)return r}}return s}function a(e,t,a,s,i,r){if(e){var n=e[t];if(n){var l=n[a];if(l<i)return i;if(l>r)return r;if(void 0!==l)return l}}return s}function s(e,t,a,s,i,r){if(e){var n=e[t];if(n){var l=n[a];if(void 0!==l)return l>r?r:l<i?i:l}}return s}function i(e,t,a,s,i,r){return r&&t==a&&1==i?s:r&&t!=a&&0==i?s:e}function r(e,t){return\"auto\"!=t?\"None\":\"auto\"==t&&\"None\"==e?\"fast\":e}function n(e,t,a){return e<t?t:e>a?a:e}function l(e,t,a,s,i){var r=e.objects;if(r){var n=r[t];if(n){var l=n[a];if(l){var p=l[s];if(void 0!==p)return p}}}return i}e.getValue=t,e.getValueMinMax=a,e.getValueNumberMinMax=s,e.ifStringReturnString=i,e.ifStringReturnStringClustersMethod=r,e.inMinMax=n,e.getCategoricalObjectValue=l}(t=e.PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E||(e.PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E={}))}(t=e.visual||(e.visual={}))}(t=e.extensibility||(e.extensibility={}))}(powerbi||(powerbi={}));var powerbi;!function(e){var t;!function(e){var t;!function(e){var t;!function(e){var t=function(){function t(e){this.imageDiv=document.createElement(\"div\"),this.imageDiv.className=\"rcv_autoScaleImageContainer\",e.element.appendChild(this.imageDiv),this.imageElement=document.createElement(\"img\"),this.imageElement.className=\"rcv_autoScaleImage\",this.imageDiv.appendChild(this.imageElement),this.settings_prepocessing_params={show:!1,scaleData:!1,applyPCA:!1},this.settings_clusterNum_params={granularityParameterType:\"auto\",percentile:50,eps:0,autoParamMinPts:!0,minPtsParam:5},this.settings_viz_params={show:!0,drawEllipse:!1,drawConvexHull:!1,drawCenters:!1,percentile:30,weight:10},this.settings_labeling_params={show:!0,textSize:8,percentile:100,maxLenPointLabel:5,percentile1:100},this.settings_representative_params={show:!1,textSize:8,maxLenDelegate:30},this.settings_legend_params={show:!0,palleteType:\"rainbow\",outLierCol:\"black\"},this.settings_additional_params={showWarnings:!0}}return t.prototype.update=function(t){var a=t.dataViews;if(a&&0!==a.length){var s=a[0];if(s&&s.metadata){this.settings_prepocessing_params={show:e.getValue(s.metadata.objects,\"settings_prepocessing_params\",\"show\",!1),scaleData:e.getValue(s.metadata.objects,\"settings_prepocessing_params\",\"scaleData\",!1),applyPCA:e.getValue(s.metadata.objects,\"settings_prepocessing_params\",\"applyPCA\",!1)},this.settings_clusterNum_params={granularityParameterType:e.getValue(s.metadata.objects,\"settings_clusterNum_params\",\"granularityParameterType\",\"auto\"),percentile:e.getValue(s.metadata.objects,\"settings_clusterNum_params\",\"percentile\",50),eps:e.getValue(s.metadata.objects,\"settings_clusterNum_params\",\"eps\",0),autoParamMinPts:e.getValue(s.metadata.objects,\"settings_clusterNum_params\",\"autoParamMinPts\",!0),minPtsParam:e.getValue(s.metadata.objects,\"settings_clusterNum_params\",\"minPtsParam\",5)},this.settings_viz_params={show:e.getValue(s.metadata.objects,\"settings_viz_params\",\"show\",!0),drawEllipse:e.getValue(s.metadata.objects,\"settings_viz_params\",\"drawEllipse\",!1),drawConvexHull:e.getValue(s.metadata.objects,\"settings_viz_params\",\"drawConvexHull\",!1),drawCenters:e.getValue(s.metadata.objects,\"settings_viz_params\",\"drawCenters\",!1),percentile:e.getValue(s.metadata.objects,\"settings_viz_params\",\"percentile\",30),weight:e.getValue(s.metadata.objects,\"settings_viz_params\",\"weight\",10)},this.settings_labeling_params={show:e.getValue(s.metadata.objects,\"settings_labeling_params\",\"show\",!0),textSize:e.getValue(s.metadata.objects,\"settings_labeling_params\",\"textSize\",8),percentile:e.getValue(s.metadata.objects,\"settings_labeling_params\",\"percentile\",100),maxLenPointLabel:e.getValue(s.metadata.objects,\"settings_labeling_params\",\"maxLenPointLabel\",5),percentile1:e.getValue(s.metadata.objects,\"settings_labeling_params\",\"percentile1\",100)},this.settings_representative_params={show:e.getValue(s.metadata.objects,\"settings_representative_params\",\"show\",!1),textSize:e.getValue(s.metadata.objects,\"settings_representative_params\",\"textSize\",8),maxLenDelegate:e.getValue(s.metadata.objects,\"settings_representative_params\",\"maxLenDelegate\",30)},this.settings_legend_params={show:e.getValue(s.metadata.objects,\"settings_legend_params\",\"show\",!0),palleteType:e.getValue(s.metadata.objects,\"settings_legend_params\",\"palleteType\",\"rainbow\"),outLierCol:e.getValue(s.metadata.objects,\"settings_legend_params\",\"outLierCol\",\"black\")},this.settings_additional_params={showWarnings:e.getValue(s.metadata.objects,\"settings_additional_params\",\"showWarnings\",!0)};var i=null;s.scriptResult&&s.scriptResult.payloadBase64&&(i=\"data:image/png;base64,\"+s.scriptResult.payloadBase64),i?this.imageElement.src=i:this.imageElement.src=null,this.onResizing(t.viewport)}}},t.prototype.onResizing=function(e){this.imageDiv.style.height=e.height+\"px\",this.imageDiv.style.width=e.width+\"px\"},t.prototype.enumerateObjectInstances=function(t){var a=t.objectName,s=[];switch(a){case\"settings_prepocessing_params\":s.push({objectName:a,properties:{show:this.settings_prepocessing_params.show,scaleData:this.settings_prepocessing_params.scaleData,applyPCA:this.settings_prepocessing_params.applyPCA},selector:null});break;case\"settings_clusterNum_params\":s.push({objectName:a,properties:{granularityParameterType:this.settings_clusterNum_params.granularityParameterType}}),\"scale\"==this.settings_clusterNum_params.granularityParameterType?s.push({objectName:a,properties:{percentile:e.inMinMax(this.settings_clusterNum_params.percentile,1,100)}}):\"manual\"==this.settings_clusterNum_params.granularityParameterType&&s.push({objectName:a,properties:{eps:e.inMinMax(this.settings_clusterNum_params.eps,0,1e8)}}),s.push({objectName:a,properties:{autoParamMinPts:this.settings_clusterNum_params.autoParamMinPts}}),this.settings_clusterNum_params.autoParamMinPts||s.push({objectName:a,properties:{minPtsParam:e.inMinMax(this.settings_clusterNum_params.minPtsParam,1,1e3)},selector:null});break;case\"settings_viz_params\":s.push({objectName:a,properties:{show:this.settings_viz_params.show,drawEllipse:this.settings_viz_params.drawEllipse,drawConvexHull:this.settings_viz_params.drawConvexHull,drawCenters:this.settings_viz_params.drawCenters,percentile:e.inMinMax(this.settings_viz_params.percentile,0,100),weight:e.inMinMax(this.settings_viz_params.weight,1,50)},selector:null});break;case\"settings_labeling_params\":s.push({objectName:a,properties:{show:this.settings_labeling_params.show,textSize:e.inMinMax(this.settings_labeling_params.textSize,8,40),percentile:e.inMinMax(this.settings_labeling_params.percentile,0,100),maxLenPointLabel:e.inMinMax(this.settings_labeling_params.maxLenPointLabel,1,100),percentile1:e.inMinMax(this.settings_labeling_params.percentile1,0,100)},selector:null});break;case\"settings_representative_params\":s.push({objectName:a,properties:{show:this.settings_representative_params.show,textSize:e.inMinMax(this.settings_representative_params.textSize,1,40),maxLenDelegate:e.inMinMax(this.settings_representative_params.maxLenDelegate,1,100)},selector:null});break;case\"settings_legend_params\":s.push({objectName:a,properties:{show:this.settings_legend_params.show,palleteType:this.settings_legend_params.palleteType,outLierCol:this.settings_legend_params.outLierCol},selector:null});break;case\"settings_additional_params\":s.push({objectName:a,properties:{showWarnings:this.settings_additional_params.showWarnings},selector:null})}return s},t}();e.Visual=t}(t=e.PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E||(e.PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E={}))}(t=e.visual||(e.visual={}))}(t=e.extensibility||(e.extensibility={}))}(powerbi||(powerbi={}));var powerbi;!function(e){var t;!function(t){var a;!function(t){t.PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E={name:\"PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E\",displayName:\"clustering with outliers\",class:\"Visual\",version:\"1.0.1\",apiVersion:\"1.3.0\",create:function(t){return new e.extensibility.visual.PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E.Visual(t)},custom:!0}}(a=t.plugins||(t.plugins={}))}(t=e.visuals||(e.visuals={}))}(powerbi||(powerbi={}));",
+    "css": ".visual-PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E .rcv_autoScaleImageContainer{position:relative}.visual-PBI_CV_967A08ED_59CD_405F_B41A_8CE2050AD30E .rcv_autoScaleImageContainer .rcv_autoScaleImage{max-width:100%;max-height:100%;position:absolute;top:50%;left:50%;transform:translateY(-50%) translateX(-50%);-webkit-transform:translateY(-50%) translateX(-50%)}",
+    "iconBase64": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAYAAACNiR0NAAAABGdBTUEAALGPC/xhBQAAAAlwSFlzAAAScQAAEnEB89x6jgAAABl0RVh0U29mdHdhcmUAcGFpbnQubmV0IDQuMC4xMkMEa+wAAAJ5SURBVDhPrZTPS5RRFIbPN4OMmWm/aBOBi3bVxk1BOwlqVS6KoD8gaBFu2wSzkSSwDNwEGi6MFoFQ1EpCk5ICkWmaaUYCJUFLcxiIFhFxb885c7+PT51m1YF37j3vufeZc+8dRjTy+fyPycnJu5a0CB/GdLiynHVVeYoeuSU5aibANQX6RpinkU6awhbloKvIiq+yVFWWWSsALAVgl0KIZ+grirQew9wn6aaTPl+U/ZZ/kN4Ehqh/t4UANwEO6hzIjBKJUSsSCnQf5STdzIeNr1xJjvkFaWNeSKBlGbINADfGxsYGgHSiNfQQbSLrkNjHxpFko0LLckcLriB76fQyXZ/jghrrAW6l7rBLPcasZbaCvCQ3Aa0H4Be+4Jr6rijHuYargA/ZQg2AtX+9sgLtyKuSA3KbY5cY835GsnTZr7l1XJGX+EdsU9KhZc2jWQ3gi9BxfA03rBAeJQEydrhIBl1GplxWLgZvFxTA/QRWkWUe7owVAFa2ASMZYq73553IH9cmJ8wPisO9scd6gKaBXwm2Ab+lgUCmYqApK/2htBPaoR+xl/gAV7YBs3IJ6G9yz9GrzO3l05GGpGUBsL7zUVyOn0NOzuN1BmtbpCFpWQAsPp6YGFaD7vp4jNd0Ns3dndI6fjv5MP4cGgheU1kArD0ZHx9Rg+PVGBsPEklZ6z4jt2LP/KxcYGwJXI6PrK/KGAMVHuGNxp4pI9cZWwI3EmAk9wA4BcfHY96LX6euX7LEeDgG7JQFwHcKDKn4nPS4PeHPMoTvlgN4p9nUbrn3PVZoFgDn0Xs0hzbRLNpCP9FzVEJvUQEtogpaRevoM6qjBfQrIP9XiPwFVskVsIuslBgAAAAASUVORK5CYII="
+  }
+}
