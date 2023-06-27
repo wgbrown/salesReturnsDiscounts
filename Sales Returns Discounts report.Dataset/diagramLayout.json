@@ -115,18 +115,6 @@
             "width": 234
           },
           "zIndex": 10
-        },
-        {
-          "location": {
-            "x": 1642.2,
-            "y": 0
-          },
-          "nodeIndex": "RelativeDate",
-          "size": {
-            "height": 200,
-            "width": 234
-          },
-          "zIndex": 0
         }
       ],
       "name": "All tables",
@@ -182,19 +170,6 @@
             "width": 234
           },
           "zIndex": 1
-        },
-        {
-          "location": {
-            "x": 574.33333206176758,
-            "y": 105.5
-          },
-          "nodeIndex": "RelativeDate",
-          "nodeLineageTag": "26b5658b-21fb-4344-b7c0-60f4ec5d116f",
-          "size": {
-            "height": 128,
-            "width": 234
-          },
-          "zIndex": 2
         }
       ],
       "name": "Layout 2",

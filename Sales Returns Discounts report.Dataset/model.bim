@@ -4,7 +4,7 @@
     "annotations": [
       {
         "name": "PBIDesktopVersion",
-        "value": "2.118.621.0 (23.06)"
+        "value": "2.119.323.0 (23.07)"
       },
       {
         "name": "__PBI_TimeIntelligenceEnabled",
@@ -16020,15 +16020,6 @@
         "isActive": false,
         "toColumn": "GeographyKey",
         "toTable": "Geography"
-      },
-      {
-        "name": "22394cb8-7af7-4f0a-955d-7954bfe45775",
-        "crossFilteringBehavior": "bothDirections",
-        "fromColumn": "Date",
-        "fromTable": "RelativeDate",
-        "toCardinality": "many",
-        "toColumn": "DateKey",
-        "toTable": "Date"
       }
     ],
     "sourceQueryCulture": "en-US",
@@ -16902,73 +16893,6 @@
         ]
       },
       {
-        "name": "RelativeDate",
-        "annotations": [
-          {
-            "name": "PBI_Id",
-            "value": "5665ed22cf854f86af144033503e3b40"
-          },
-          {
-            "name": "436ba87b-9c83-4389-a31b-ebd06a36be98",
-            "value": "{\"Expression\":\"\\nvar CurrentDate = CALCULATE(max('Date'[DateKey]),  filter(all('Date'), [Sales Units] > 0))\\n \\nvar CurrDayTbl = \\nSELECTCOLUMNS(\\n    filter(DISTINCT('Date'), 'Date'[DateKey] =CurrentDate),\\n    \\\"Date\\\", [Datekey],\\n    \\\"RelativeDate\\\", \\\"Current Day\\\")\\n\\nvar PriorDayTbl = \\nSELECTCOLUMNS(\\n    filter(DISTINCT('Date'), 'Date'[DateKey] = CurrentDate-1),\\n    \\\"Date\\\",  [Datekey],\\n    \\\"RelativeDate\\\", \\\"Prior Day\\\")\\n\\nvar days = distinct( union( CurrDayTbl, PriorDayTbl) )\\n\\nvar   maxmonthyear = CALCULATE(max('Date'[SortMonthYr]), filter(distinct('Date'), [Sales Units] > 0))\\nvar CurrMonthTbl = \\nSELECTCOLUMNS(\\n     filter(DISTINCT('Date'), 'Date'[SortMonthYr] = maxmonthyear),\\n    \\\"Date\\\", [Datekey],\\n    \\\"RelativeDate\\\", \\\"Current Month\\\")\\n\\nvar priorMonthTbl = \\nSELECTCOLUMNS(\\n     filter(DISTINCT('Date'), 'Date'[SortMonthYr] = maxmonthyear-1),\\n    \\\"Date\\\", [Datekey],\\n    \\\"RelativeDate\\\", \\\"Prior Month\\\")  \\n\\n \\n\\n    return  union (  days,CurrMonthTbl, priorMonthTbl   ) \"}"
-          },
-          {
-            "name": "277cc1b9-af89-4597-8e15-cacc25c0886b",
-            "value": [
-              "A circular dependency was detected: RelativeDate[RelativeDate-734ba3d6-56a1-4361-a9d0-7241326fddbd], 22394cb8-7af7-4f0a-955d-7954bfe45775, RelativeDate[Date], RelativeDate[RelativeDate-734ba3d6-56a1-4361-a9d0-7241326fddbd].\r",
-              ""
-            ]
-          }
-        ],
-        "columns": [
-          {
-            "name": "Date",
-            "annotations": [
-              {
-                "name": "SummarizationSetBy",
-                "value": "Automatic"
-              }
-            ],
-            "dataType": "int64",
-            "formatString": "0",
-            "isDataTypeInferred": true,
-            "isNameInferred": true,
-            "lineageTag": "b6e421d5-7b3a-4770-b690-9571ee97721a",
-            "sourceColumn": "[Date]",
-            "summarizeBy": "none",
-            "type": "calculatedTableColumn"
-          },
-          {
-            "name": "RelativeDate",
-            "annotations": [
-              {
-                "name": "SummarizationSetBy",
-                "value": "Automatic"
-              }
-            ],
-            "dataType": "int64",
-            "formatString": "0",
-            "isDataTypeInferred": true,
-            "isNameInferred": true,
-            "lineageTag": "86b9d625-132d-471b-888b-00462f1d8202",
-            "sourceColumn": "[RelativeDate]",
-            "summarizeBy": "sum",
-            "type": "calculatedTableColumn"
-          }
-        ],
-        "lineageTag": "26b5658b-21fb-4344-b7c0-60f4ec5d116f",
-        "partitions": [
-          {
-            "name": "RelativeDate-734ba3d6-56a1-4361-a9d0-7241326fddbd",
-            "mode": "import",
-            "source": {
-              "expression": "Row(\"Date\", BLANK(), \"RelativeDate\", BLANK())",
-              "type": "calculated"
-            }
-          }
-        ]
-      },
-      {
         "name": "Sales",
         "annotations": [
           {
@@ -17513,16 +17437,6 @@
               ")"
             ],
             "lineageTag": "414f65de-8472-45e9-8c94-b0d86886d3d4"
-          },
-          {
-            "name": "_NetSalesTitle",
-            "expression": "\"Net Sales  \"  & ( format(CALCULATE([net sales], 'RelativeDate'[RelativeDate] = \"Current MOnth\"), \"$0,00\")) &  rept(Unichar(10),1) &  rept(\" \", 25)  & \"👌\"",
-            "lineageTag": "2d4d9920-b088-4b8c-bea0-91ee8b02cab8"
-          },
-          {
-            "name": "_netSalesCM",
-            "expression": "\"Net Sales:\" & rept(Unichar(10),1) & format(CALCULATE([net sales], 'RelativeDate'[RelativeDate] = \"Current MOnth\"), \"$0,00\")",
-            "lineageTag": "c2d0fe0a-2e6c-4041-9b36-2e26bd0a8c65"
           },
           {
             "name": "TopSellingSubCategory",
