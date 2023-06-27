@@ -7,6 +7,8 @@ Geography
 product
 promotion 
 sales Territory
-Scenario 
-store 
+Scenario
+store
+
+
 
