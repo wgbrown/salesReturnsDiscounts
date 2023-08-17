@@ -4,7 +4,7 @@
     "annotations": [
       {
         "name": "PBIDesktopVersion",
-        "value": "2.119.323.0 (23.07)"
+        "value": "2.119.986.0 (23.07)"
       },
       {
         "name": "__PBI_TimeIntelligenceEnabled",
@@ -17454,6 +17454,29 @@
             "expression": "if(ISBLANK([Store Sales $]), blank(), RANKX(filter(all('Product'[SubCategory]), [Store Sales $]), CALCULATE([Store Sales $]),,DESC,Dense)  )",
             "formatString": "0",
             "lineageTag": "c4f3fa86-337d-4935-98d3-84abf7005fcb"
+          },
+          {
+            "name": "Rank Test Store Sales",
+            "expression": [
+              "rank(",
+              "DENSE,",
+              "SUMMARIZE(ALLSELECTED('Sales'), 'Store'[StoreName], 'Product'[ProductName]), ORDERBY([Store Sales $],DESC),",
+              "DEFAULT, PARTITIONBY('Store'[StoreName])) ",
+              ""
+            ],
+            "formatString": "0",
+            "lineageTag": "24d12b4e-5a68-4f99-8b07-2492d4650907"
+          },
+          {
+            "name": "diff from next best selling brand",
+            "expression": [
+              "",
+              " ",
+              "Var nextbest = CALCULATE([Net Qty], offset(-1, ALLSELECTED('Product'[BrandName]), ORDERBY([Net Qty] , desc)))  ",
+              "return if(ISBLANK(nextbest), blank(),  nextbest - [Net Qty] )"
+            ],
+            "formatString": "0",
+            "lineageTag": "a643398c-348e-4481-b5ee-1363b6e28c03"
           }
         ],
         "partitions": [
@@ -17991,13 +18014,33 @@
                 "value": "Automatic"
               }
             ],
+            "changedProperties": [
+              {
+                "property": "SortByColumn"
+              }
+            ],
             "dataType": "string",
             "lineageTag": "eea39473-b2bb-497c-9290-906d34b6467c",
+            "sortByColumn": "ScenarioKey",
             "sourceColumn": "ScenarioName",
             "summarizeBy": "none"
           }
         ],
         "lineageTag": "1c803819-3288-4b4e-b623-59004132bc90",
+        "measures": [
+          {
+            "name": "Measure",
+            "annotations": [
+              {
+                "name": "PBI_FormatHint",
+                "value": "{\"currencyCulture\":\"en-US\"}"
+              }
+            ],
+            "expression": "CALCULATE(sum('Sales Quota'[SalesAmountQuota]), offset(-1, ALLSELECTED('Scenario'), ORDERBY('Scenario'[ScenarioName], asc), DEFAULT ))",
+            "formatString": "\\$#,0.###############;(\\$#,0.###############);\\$#,0.###############",
+            "lineageTag": "c86cbc86-f8cc-4228-9e3c-0f7bb280d3a7"
+          }
+        ],
         "partitions": [
           {
             "name": "Scenario-f5dafedf-1b57-4c3d-b3ce-de02ad4fe356",
